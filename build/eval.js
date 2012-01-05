@@ -10,7 +10,7 @@ var tryRequire = function (a, b) {
     }
 };
 
-var packages = require('kanso/packages'),
+var packages = tryRequire('kanso/lib/packages', 'kanso/packages'),
     couchapp = require('couchapp'),
     watch = require('watch'),
     mimetypes = tryRequire('mime', 'node-mime/mime'),
