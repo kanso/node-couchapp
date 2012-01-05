@@ -33,6 +33,9 @@ module.exports = function (root, path, settings, doc, callback) {
                         return callback(err);
                     }
                     doc = packages.merge(doc, app.doc);
+                    if (doc.__attachments) {
+                        delete doc.__attachments;
+                    }
                     callback(null, doc);
                 });
             });
@@ -68,20 +71,23 @@ function addAttachments(app, callback) {
             if (!keys.length) {
                 return callback(null, app);
             }
-            async.forEach(files, function (f, cb) {
-                fs.readFile(f, function (err, data) {
-                    if (err) {
-                        return cb(err);
-                    }
-                    f = f.replace(att.root, att.prefix || '');
-                    if (f[0] === '/') {
-                        f = f.slice(1);
-                    }
-                    var d = data.toString('base64');
-                    var mime = mimetypes.lookup(path.extname(f).slice(1));
-                    app.doc._attachments[f] = {data: d, content_type: mime};
-                    cb();
-                })
+            async.forEach(keys, function (f, cb) {
+                fs.stat(f, function(err, stats) {
+                    if (stats.isDirectory()) return cb();
+                    fs.readFile(f, function (err, data) {
+                        if (err) {
+                            return cb(err);
+                        }
+                        f = f.replace(att.root, att.prefix || '');
+                        if (f[0] === '/') {
+                            f = f.slice(1);
+                        }
+                        var d = data.toString('base64');
+                        var mime = mimetypes.lookup(path.extname(f).slice(1));
+                        app.doc._attachments[f] = {data: d, content_type: mime};
+                        cb();
+                    })
+                });
             },
             function (err) {
                 callback(err, app);
