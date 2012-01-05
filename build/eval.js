@@ -14,7 +14,7 @@ var couchapp = require('couchapp'),
     watch = require('watch'),
     mimetypes = tryRequire('mime', 'node-mime/mime'),
     path = require('path'),
-    utils = require('kanso/utils'),
+    utils = require('kanso-utils/utils'),
     async = require('async'),
     fs = require('fs');
 
