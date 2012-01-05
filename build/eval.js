@@ -10,8 +10,7 @@ var tryRequire = function (a, b) {
     }
 };
 
-var packages = tryRequire('kanso/lib/packages', 'kanso/packages'),
-    couchapp = require('couchapp'),
+var couchapp = require('couchapp'),
     watch = require('watch'),
     mimetypes = tryRequire('mime', 'node-mime/mime'),
     path = require('path'),
@@ -19,6 +18,31 @@ var packages = tryRequire('kanso/lib/packages', 'kanso/packages'),
     async = require('async'),
     fs = require('fs');
 
+
+var merge = function (a, b, /*optional*/path) {
+    a = a || {};
+    b = b || {};
+    path = path || [];
+
+    for (var k in b) {
+        if (typeof b[k] === 'object' && !Array.isArray(b[k])) {
+            a[k] = exports.merge(a[k], b[k], path.concat([k]));
+        }
+        else {
+            if (a[k] && a[k] !== b[k]) {
+                throw new Error(
+                    'Conflicting property at: ' + path.concat([k]).join('.') +
+                    '\nBetween: ' +
+                    //exports.maxlen(JSON.stringify(a[k]), 30) + ' and ' +
+                    //exports.maxlen(JSON.stringify(b[k]), 30)
+                    JSON.stringify(a[k]) + ' and ' + JSON.stringify(b[k])
+                );
+            }
+            a[k] = b[k];
+        }
+    }
+    return a;
+};
 
 module.exports = function (root, path, settings, doc, callback) {
     if (settings.app) {
@@ -32,7 +56,7 @@ module.exports = function (root, path, settings, doc, callback) {
                     if (err) {
                         return callback(err);
                     }
-                    doc = packages.merge(doc, app.doc);
+                    doc = merge(doc, app.doc);
                     callback(null, doc);
                 });
             });
