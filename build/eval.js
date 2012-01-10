@@ -10,9 +10,9 @@ var tryRequire = function (a, b) {
     }
 };
 
-var couchapp = require('couchapp'),
+
+var mimetypes = tryRequire('mime', 'node-mime/mime'),
     watch = require('watch'),
-    mimetypes = tryRequire('mime', 'node-mime/mime'),
     path = require('path'),
     utils = require('kanso-utils/utils'),
     async = require('async'),
@@ -26,7 +26,7 @@ var merge = function (a, b, /*optional*/path) {
 
     for (var k in b) {
         if (typeof b[k] === 'object' && !Array.isArray(b[k])) {
-            a[k] = exports.merge(a[k], b[k], path.concat([k]));
+            a[k] = merge(a[k], b[k], path.concat([k]));
         }
         else {
             if (a[k] && a[k] !== b[k]) {
@@ -44,47 +44,69 @@ var merge = function (a, b, /*optional*/path) {
     return a;
 };
 
-module.exports = function (root, path, settings, doc, callback) {
-    if (settings.app) {
-        try {
-            var require_path = utils.abspath(settings.app, path);
-            var mod = require(require_path);
-            var fake_url = 'http://localhost:5984/db';
-            var app = couchapp.createApp(mod, fake_url, function (app) {
-                app.prepare();
-                addAttachments(app, function (err, app) {
+
+
+module.exports = {
+    before : "attachments",
+    run : function (root, kanso_path, settings, doc, callback) {
+        if (settings.app) {
+            try {
+                var require_path = utils.abspath(settings.app, kanso_path);
+                var mod = exec(require_path);
+                doc = merge(doc, mod.ddoc);
+
+                if (!settings.attachments) settings.attachments = [];
+
+
+                addAttachments(doc, mod.folders, function (err, doc) {
                     if (err) {
                         return callback(err);
                     }
-                    doc = merge(doc, app.doc);
                     callback(null, doc);
                 });
-            });
+            }
+            catch (e) {
+                return callback(e);
+            }
         }
-        catch (e) {
-            return callback(e);
+        else {
+            callback(null, doc);
         }
     }
-    else {
-        callback(null, doc);
+}
+
+    
+
+function exec(app) {
+    app = app + ".js";
+    var appStr = fs.readFileSync(app, 'utf-8');
+    appStr = mockRequire(appStr, app);
+    eval(appStr);
+    return {
+        folders: folders,
+        ddoc : module.exports
     }
-};
+}
 
 
-function addAttachments(app, callback) {
-    var pending = 0;
+function mockRequire(appStr, src) {
+    appStr = "var folders = []; var couchapp = {}; couchapp.loadAttachments = function(doc, path) {folders.push(path); }; var path = {}; path.join = function(a,b){return b;}; var require = function(str) { if(str =='couchapp') return couchapp; return path;     } " + appStr;
+    appStr = appStr + '\n//@ sourceURL=' + src;
+    return appStr;
+}
 
-    // we're not using this
-    delete app.doc.attachments_md5;
 
-    if (!app.doc.__attachments || !app.doc.__attachments.length) {
-        delete app.doc.__attachments;
-        return callback(null, app);
+
+function addAttachments(doc, folders, callback) {
+    if (!folders || ! folders.length) {
+        return callback(null, doc);
     }
+
+    if (!doc._attachments) doc._attachments = {};
 
     // adapted from node.couchapp.js/main.js
-    app.doc.__attachments.forEach(function (att) {
-        watch.walk(att.root, {ignoreDotFiles:true}, function (err, files) {
+    folders.forEach(function (att) {
+        watch.walk(att, {ignoreDotFiles:true}, function (err, files) {
             if (err) {
                 return callback(err);
             }
@@ -92,23 +114,24 @@ function addAttachments(app, callback) {
             if (!keys.length) {
                 return callback(null, app);
             }
-            async.forEach(files, function (f, cb) {
+            async.forEach(keys, function (f, cb) {
                 fs.readFile(f, function (err, data) {
                     if (err) {
-                        return cb(err);
+                        return cb();
+
                     }
-                    f = f.replace(att.root, att.prefix || '');
-                    if (f[0] === '/') {
-                        f = f.slice(1);
-                    }
+                    f = f.replace(att + '/','');
+                    //if (f[0] === '/') {
+                    //    f = f.slice(1);
+                    //}
                     var d = data.toString('base64');
                     var mime = mimetypes.lookup(path.extname(f).slice(1));
-                    app.doc._attachments[f] = {data: d, content_type: mime};
+                    doc._attachments[f] = {data: d, content_type: mime};
                     cb();
                 })
             },
             function (err) {
-                callback(err, app);
+                callback(err, doc);
             });
         })
     })
