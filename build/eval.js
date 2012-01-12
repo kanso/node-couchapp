@@ -45,6 +45,21 @@ var merge = function (a, b, /*optional*/path) {
 };
 
 
+var selective_design_merge = function(last_doc, next_doc, options) {
+
+    // the ususal suspects
+    var properties = ["views", "lists", "shows", "filters"];
+    for (var i in properties) {
+        var prop = properties[i];
+        next_doc[prop] = merge(last_doc[prop], next_doc[prop]);
+    }
+
+    if (options && options["merge-rewrites"] && last_doc.rewrites && last_doc.rewrites) {
+        if (!next_doc.rewrites) next_doc.rewrites = [];
+        next_doc.rewrites = last_doc.rewrites.concat(next_doc.rewrites);
+    }
+    return next_doc;
+}
 
 module.exports = {
     before : "attachments",
@@ -53,7 +68,7 @@ module.exports = {
             try {
                 var require_path = utils.abspath(settings.app, kanso_path);
                 var mod = exec(require_path);
-                doc = merge(doc, mod.ddoc);
+                doc = selective_design_merge(doc, mod.ddoc, settings["node-couchapp"]);
 
                 if (!settings.attachments) settings.attachments = [];
 
