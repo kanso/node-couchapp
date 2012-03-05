@@ -67,8 +67,9 @@ module.exports = {
         if (settings.app) {
             try {
                 var require_path = utils.abspath(settings.app, kanso_path);
-                var mod = exec(require_path);
-                doc = selective_design_merge(doc, mod.ddoc, settings["node-couchapp"]);
+                var mod = require(require_path);
+                var ddoc = mod.ddoc || mod;
+                doc = selective_design_merge(doc, ddoc, settings["node-couchapp"]);
 
                 if (!settings.attachments) settings.attachments = [];
 
@@ -88,26 +89,6 @@ module.exports = {
             callback(null, doc);
         }
     }
-}
-
-    
-
-function exec(app) {
-    app = app + ".js";
-    var appStr = fs.readFileSync(app, 'utf-8');
-    appStr = mockRequire(appStr, app);
-    eval(appStr);
-    return {
-        folders: folders,
-        ddoc : module.exports
-    }
-}
-
-
-function mockRequire(appStr, src) {
-    appStr = "var folders = []; var couchapp = {}; couchapp.loadAttachments = function(doc, path) {folders.push(path); }; var path = {}; path.join = function(a,b){return b;}; var require = function(str) { if(str =='couchapp') return couchapp; return path;     } " + appStr;
-    appStr = appStr + '\n//@ sourceURL=' + src;
-    return appStr;
 }
 
 
