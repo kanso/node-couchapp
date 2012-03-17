@@ -1,0 +1,9 @@
+{
+    "name": "reupholster-sample",
+    "version": "0.0.1",
+    "description": "A baseline couchapp that uses reupholster",
+    "app": "app",
+    "dependencies": {
+        "node-couchapp": null
+    }
+}

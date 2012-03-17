@@ -10,6 +10,7 @@ var tryRequire = function (a, b) {
     }
 };
 
+var couchapp = require('couchapp');
 
 var mimetypes = tryRequire('mime', 'node-mime/mime'),
     watch = require('watch'),
