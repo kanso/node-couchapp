@@ -95,6 +95,10 @@ The exception is 'rewrites'. This can't be merged very well, so there is an opti
 }
 ```
 
+## To run the tests for this package do the following, using a db name that works for you:
 
+```
+./test/run_headless_tests.sh http://localhost:5984/node-couch-test
+```
 
 
