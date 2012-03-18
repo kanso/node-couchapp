@@ -67,14 +67,17 @@ module.exports = {
     run : function (root, kanso_path, settings, doc, callback) {
         if (settings.app) {
             try {
+
                 var require_path = utils.abspath(settings.app, kanso_path);
-                var mod = exec(require_path);
-                doc = selective_design_merge(doc, mod.ddoc, settings["node-couchapp"]);
+                var mod = require(require_path);
+                doc = selective_design_merge(doc, mod, settings["node-couchapp"]);
 
                 if (!settings.attachments) settings.attachments = [];
+                var folders = mod.__attachments;
+                delete mod.__attachments;
 
 
-                addAttachments(doc, mod.folders, function (err, doc) {
+                addAttachments(doc, folders, function (err, doc) {
                     if (err) {
                         return callback(err);
                     }
@@ -91,27 +94,6 @@ module.exports = {
     }
 }
 
-    
-
-function exec(app) {
-    app = app + ".js";
-    var appStr = fs.readFileSync(app, 'utf-8');
-    appStr = mockRequire(appStr, app);
-    eval(appStr);
-    return {
-        folders: folders,
-        ddoc : module.exports
-    }
-}
-
-
-function mockRequire(appStr, src) {
-    appStr = "var folders = []; var couchapp = {}; couchapp.loadAttachments = function(doc, path) {folders.push(path); }; var path = {}; path.join = function(a,b){return b;}; var require = function(str) { if(str =='couchapp') return couchapp; return path;     } " + appStr;
-    appStr = appStr + '\n//@ sourceURL=' + src;
-    return appStr;
-}
-
-
 
 function addAttachments(doc, folders, callback) {
     if (!folders || ! folders.length) {
@@ -122,7 +104,7 @@ function addAttachments(doc, folders, callback) {
 
     // adapted from node.couchapp.js/main.js
     folders.forEach(function (att) {
-        watch.walk(att, {ignoreDotFiles:true}, function (err, files) {
+        watch.walk(att.root, {ignoreDotFiles:true}, function (err, files) {
             if (err) {
                 return callback(err);
             }
@@ -134,12 +116,11 @@ function addAttachments(doc, folders, callback) {
                 fs.readFile(f, function (err, data) {
                     if (err) {
                         return cb();
-
                     }
-                    f = f.replace(att + '/','');
-                    //if (f[0] === '/') {
-                    //    f = f.slice(1);
-                    //}
+                    f = f.replace(att.root, att.prefix || '');
+                    if (f[0] === '/') {
+                        f = f.slice(1);
+                    }
                     var d = data.toString('base64');
                     var mime = mimetypes.lookup(path.extname(f).slice(1));
                     doc._attachments[f] = {data: d, content_type: mime};

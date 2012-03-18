@@ -1,0 +1,8 @@
+{ "name"   : "example"
+, "version": "0.1.0"
+, "description": "Example Kanso app which breaks with node-couchapp"
+, "dependencies": { "node-couchapp": null
+                  }
+, "app": "app"
+, "modules_attachment": false
+}
